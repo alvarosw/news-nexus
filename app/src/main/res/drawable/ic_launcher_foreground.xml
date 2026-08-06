@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Android app icon (and the themed monochrome icon) reuse the plugin
+     glyph, so the mark is identical in Nexus, the system app list and the
+     uninstall dialog. 20% keeps it inside the adaptive-icon safe zone. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/nexus_glyph_news"
+    android:inset="20%" />

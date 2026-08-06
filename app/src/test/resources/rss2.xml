@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Example World News</title>
+    <link>https://example.com/world</link>
+    <description>World coverage</description>
+    <image>
+      <title>Example logo</title>
+      <url>https://example.com/logo.png</url>
+    </image>
+    <item>
+      <title><![CDATA[Second story &amp; the follow-up]]></title>
+      <link>https://example.com/world/second</link>
+      <guid isPermaLink="false">tag:example.com,2026:second</guid>
+      <description>&lt;p&gt;Teaser with &lt;b&gt;markup&lt;/b&gt;.&lt;/p&gt;</description>
+      <pubDate>Tue, 04 Aug 2026 09:15:00 GMT</pubDate>
+      <dc:creator>Ana Lima</dc:creator>
+      <media:thumbnail url="https://example.com/thumb.jpg" />
+    </item>
+    <item>
+      <title>First story</title>
+      <link>https://example.com/world/first</link>
+      <description>Short teaser.</description>
+      <content:encoded><![CDATA[<p>Full first paragraph.</p><p>Second paragraph with a <a href="https://example.com">link</a>.</p>]]></content:encoded>
+      <pubDate>Wed, 05 Aug 2026 18:00:00 +0000</pubDate>
+      <author>newsroom@example.com</author>
+    </item>
+    <item>
+      <title>Undated story</title>
+      <link>https://example.com/world/undated</link>
+      <description>No date at all.</description>
+    </item>
+  </channel>
+</rss>

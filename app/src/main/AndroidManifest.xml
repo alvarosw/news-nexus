@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The plugin fetches its own feeds phone-side with its own HTTP stack; the
+         narrow /http/request bus proxy exists for glasses-side fetches only. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Deliberately no POST_NOTIFICATIONS: a plugin's session foreground service
+         stays invisible; the Rokid Nexus hub owns the one user-facing notification. -->
+
+    <queries>
+        <intent>
+            <action android:name="com.anezium.rokidbus.action.HUB" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.News">
+
+        <!-- Feed management screen. Exported with NO intent-filter: the hub opens
+             it by explicit component (SETTINGS_ACTIVITY) and nothing else can
+             find it. There is no MAIN/LAUNCHER activity anywhere: a Nexus plugin
+             is a headless phone APK. -->
+        <activity
+            android:name=".NewsSettingsActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- The single exported Nexus plugin service. -->
+        <service
+            android:name=".NewsPluginService"
+            android:exported="true"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="glasses-session" />
+            <intent-filter>
+                <action android:name="com.anezium.rokidbus.action.PLUGIN" />
+            </intent-filter>
+            <meta-data android:name="com.anezium.rokidbus.plugin.ID" android:value="news" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.DISPLAY_NAME" android:value="News" />
+            <!-- Declare BOTH icons. The built-in ICON key renders natively on the
+                 glasses launcher; a custom ICON_DRAWABLE lives in the phone APK
+                 and never reaches the glasses, so dropping the built-in would
+                 leave the generic grid glyph there. -->
+            <meta-data android:name="com.anezium.rokidbus.plugin.ICON" android:value="feed" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.ICON_DRAWABLE" android:resource="@drawable/nexus_glyph_news" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.API_VERSION" android:value="3" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.CAPABILITIES" android:value="surfaces" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.RECEIVE_PREFIXES" android:value="/plugin/news,/system/plugin" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.SETTINGS_ACTIVITY" android:value=".NewsSettingsActivity" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.LAUNCHABLE" android:value="true" />
+        </service>
+    </application>
+</manifest>

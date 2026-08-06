@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["news-v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests (includes the R08 one-axis navigability proof)
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Lint
+        run: ./gradlew :app:lintDebug --no-daemon
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+
+      # A Nexus plugin is a headless phone APK: a MAIN/LAUNCHER activity would
+      # give it a launcher icon and the Store registry CI rejects it.
+      - name: Headless manifest gate
+        run: |
+          manifest=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged_manifest*' | head -1)
+          echo "checking $manifest"
+          if grep -q 'android.intent.action.MAIN' "$manifest" || grep -q 'android.intent.category.LAUNCHER' "$manifest"; then
+            echo "::error::MAIN/LAUNCHER intent filter present - the plugin must stay headless"
+            exit 1
+          fi
+          services=$(grep -c 'com.anezium.rokidbus.action.PLUGIN' "$manifest")
+          if [ "$services" -ne 1 ]; then
+            echo "::error::expected exactly one exported plugin service, found $services"
+            exit 1
+          fi
+          echo "headless contract OK"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
