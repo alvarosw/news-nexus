@@ -118,14 +118,22 @@ Installing grants nothing on its own, and changing the requested capability set
 resets the grant to Pending. Switching signing keys (debug ↔ release) needs an
 uninstall, reinstall and re-approval.
 
+## Releases
+
+`news-v1.0.2` is the first Store release: [news-phone-release.apk](https://github.com/beyondlevi/news-nexus/releases/tag/news-v1.0.2),
+signed with the plugin's permanent certificate (`07d94dca…df17`). A plugin's
+identity is `package + pluginId + signerSha256`, so that certificate never
+changes; installing the Store build over a locally sideloaded debug build
+requires uninstalling the debug one first.
+
 ## Roadmap
 
 - Read aloud on the glasses via the hub `tts` capability (a new capability means
   re-approval, so it is a deliberate later step).
 - Article images on the HUD image surface, for feeds that carry `media:thumbnail`.
 - OPML import/export in the settings screen.
-- Publishing to the in-app Nexus Store through the
-  [RokidBrew registry](https://github.com/Anezium/RokidBrew-Registry).
+Submitted to the in-app Nexus Store: [RokidBrew registry PR #60](https://github.com/Anezium/RokidBrew-Registry/pull/60),
+pending maintainer review. Releases live under the namespaced tag `news-vX.Y.Z`.
 
 ## License
 
