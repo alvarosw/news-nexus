@@ -4,15 +4,20 @@ package com.beyondlevi.nexus.news
  * Turns an article body into HUD pages.
  *
  * Two hard constraints shape the numbers here. The glasses list renderer clips a
- * prose row at three wrapped lines, so a row longer than [MAX_ROW_CHARS] loses
- * its tail; and a surface heavier than ~3 KiB is not delivered at all when the
- * SPP data plane is down, so a whole article can never be one surface. Small
- * pages satisfy both and keep every page inside the viewport, which is what
- * makes the reader navigable with one axis.
+ * prose row at three wrapped lines and ellipsises the tail — the text does NOT
+ * flow into the next row, it is lost — and a surface heavier than ~3 KiB is not
+ * delivered at all when the SPP data plane is down, so a whole article can never
+ * be one surface. Small pages satisfy both and keep every page inside the
+ * viewport, which is what makes the reader navigable with one axis.
+ *
+ * [MAX_ROW_CHARS] is measured, not guessed: on the RG-glasses HUD a prose row
+ * fits about 29 characters per wrapped line, so three lines hold ~87. 80 leaves
+ * margin for wide glyphs. A 110-char row was device-verified to drop its tail
+ * mid-sentence.
  */
 object ArticlePager {
 
-    const val MAX_ROW_CHARS = 110
+    const val MAX_ROW_CHARS = 80
     const val ROWS_PER_PAGE = 4
 
     fun paginate(paragraphs: List<String>): List<List<String>> {

@@ -79,8 +79,9 @@ degrade:
   and article text is paged. A test asserts the budget against 200 long articles.
 - **Card limits.** Rows ≤ 64, line ≤ 240 chars, and a hashed `contentKey` ≤ 128 —
   a `contentKey` built by concatenating content throws inside the plugin process.
-- **Prose rows clip at three wrapped lines**, so reader rows are wrapped at 110
-  characters on word boundaries.
+- **Prose rows clip at three wrapped lines** and the tail is ellipsised away, not
+  reflowed, so reader rows are wrapped at 80 characters on word boundaries — the
+  measured capacity of three lines on the RG-glasses HUD.
 - **`SURFACE_BUSY` and friends are given up on quietly** — one plugin owns the
   HUD at a time and a retry loop would fight it.
 - **Feeds are remote input.** Doctypes and external entities are refused (XXE and

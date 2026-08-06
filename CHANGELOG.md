@@ -3,6 +3,14 @@
 All notable changes to the News plugin are documented here. Versions follow
 semver and match `versionName` in `app/build.gradle.kts`.
 
+## 1.0.1
+
+- Reader rows wrap at 80 characters instead of 110. Device testing on the
+  RG-glasses HUD showed a prose row holds ~29 characters per wrapped line and the
+  renderer clips at three lines with an ellipsis — the tail is dropped, not
+  reflowed — so the previous budget silently lost the end of every long paragraph
+  mid-sentence.
+
 ## 1.0.0
 
 First release.
