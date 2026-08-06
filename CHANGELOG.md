@@ -3,6 +3,16 @@
 All notable changes to the News plugin are documented here. Versions follow
 semver and match `versionName` in `app/build.gradle.kts`.
 
+## 1.0.2
+
+- Headlines now read across both text bands of a HUD list row instead of being
+  ellipsised after ~28 characters. The glasses renderer caps a list-row title at
+  one line and a plugin cannot make it wrap, so the headline is split on a word
+  boundary between the title and the secondary line, and the age and source move
+  to the row's trailing tokens. Roughly twice as much headline is legible.
+- Row age is rendered against an injected clock instead of the system one, so a
+  rendered surface is reproducible in tests.
+
 ## 1.0.1
 
 - Reader rows wrap at 80 characters instead of 110. Device testing on the

@@ -30,7 +30,7 @@ object NewsSurfaces {
     const val CXR_SAFE_BYTES = 2_600
 
     fun card(state: NewsState, nowMs: Long = System.currentTimeMillis()): NexusCard {
-        val rows = state.rows()
+        val rows = state.rows(nowMs)
         val selected = state.selectedIndex()
         val window = window(rows, selected, state.view)
         val lines = window.rows.mapIndexed { index, row ->
@@ -80,16 +80,29 @@ object NewsSurfaces {
 
     // ------------------------------------------------------------------- pieces
 
-    private fun line(row: NewsState.Row, selected: Boolean): NexusCardLine = NexusCardLine(
-        text = NewsFormat.ellipsize(row.text, MAX_TITLE_CHARS),
-        sub = row.sub?.takeIf { it.isNotBlank() }?.let { NewsFormat.ellipsize(it, MAX_SUB_CHARS) },
-        tone = when {
-            row.kind == NewsState.RowKind.PAGE -> NexusRowTone.BODY
-            row.dim -> NexusRowTone.DIM
-            else -> NexusRowTone.NORMAL
-        },
-        selected = selected,
-    )
+    private fun line(row: NewsState.Row, selected: Boolean): NexusCardLine {
+        // A headline gets both text bands the HUD draws for a list row, because
+        // the title alone is capped at one line and would ellipsise most of it
+        // away. Everything else keeps its own label/description shape.
+        val (first, second) = if (row.kind == NewsState.RowKind.ARTICLE) {
+            val split = HeadlineLayout.split(row.text, HeadlineLayout.firstMaxFor(row.trail))
+            split.first to split.second
+        } else {
+            NewsFormat.ellipsize(row.text, MAX_TITLE_CHARS) to
+                row.sub?.takeIf { it.isNotBlank() }?.let { NewsFormat.ellipsize(it, MAX_SUB_CHARS) }
+        }
+        return NexusCardLine(
+            text = first,
+            sub = second,
+            trail = row.trail,
+            tone = when {
+                row.kind == NewsState.RowKind.PAGE -> NexusRowTone.BODY
+                row.dim -> NexusRowTone.DIM
+                else -> NexusRowTone.NORMAL
+            },
+            selected = selected,
+        )
+    }
 
     private fun title(state: NewsState): String = when (state.view) {
         NewsState.View.SOURCES -> "News"
@@ -176,6 +189,7 @@ object NewsSurfaces {
         bytes += utf8(card.footer.orEmpty())
         card.richLines.orEmpty().forEach { row ->
             bytes += utf8(row.text) + utf8(row.sub.orEmpty()) + 48
+            row.trail.forEach { bytes += utf8(it) + 6 }
         }
         card.lines.forEach { bytes += utf8(it) + 4 }
         return bytes

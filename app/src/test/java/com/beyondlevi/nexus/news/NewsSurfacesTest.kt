@@ -68,6 +68,48 @@ class NewsSurfacesTest {
     }
 
     @Test
+    fun `a headline fills both text bands and pushes its meta into the trail`() {
+        val state = NewsState().apply {
+            setFeeds(listOf(feed(1)))
+            setArticles(
+                listOf(
+                    article(1).copy(
+                        title = "Houthi attacks reportedly kill at least 30 people in Yemen",
+                        publishedAtMs = now - 6 * 60_000,
+                    ),
+                ),
+            )
+        }
+        state.activate() // into the headline list
+
+        val row = NewsSurfaces.card(state, now).richLines!!.first()
+
+        // Both bands carry headline text, so the wearer reads far more than the
+        // single ellipsised title line the HUD would otherwise draw.
+        // With only an age in the trail the title band keeps 25 characters.
+        assertEquals("Houthi attacks reportedly", row.text)
+        assertTrue("second band empty: ${row.sub}", row.sub!!.startsWith("kill at least 30"))
+        assertTrue(row.sub!!.length <= HeadlineLayout.LINE_TWO_CHARS)
+        assertEquals(listOf("6m"), row.trail)
+    }
+
+    @Test
+    fun `the mixed list keeps the source in the trail`() {
+        val state = NewsState().apply {
+            setFeeds(listOf(feed(1), feed(2)))
+            setArticles(listOf(article(1).copy(feedTitle = "BBC News", publishedAtMs = now - 3_600_000)))
+        }
+        state.activate() // All feeds
+
+        val row = NewsSurfaces.card(state, now).richLines!!.first()
+
+        assertEquals(listOf("1h", "BBC News"), row.trail)
+        // Every trail character costs headline on the same line, so the source is
+        // capped hard and the title band shrinks to match.
+        assertTrue(HeadlineLayout.firstMaxFor(row.trail) < HeadlineLayout.firstMaxFor(listOf("1h")))
+    }
+
+    @Test
     fun `reader rows are prose rows and carry the page position`() {
         val body = (1..60).joinToString(" ") { "word$it" }
         val state = NewsState().apply {

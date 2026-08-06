@@ -18,6 +18,27 @@ object NewsFormat {
         }
     }
 
+    /**
+     * Row trail tokens. The first is rendered in the row's own tone, the rest
+     * muted and smaller, so the age leads and the source follows.
+     */
+    fun articleTrail(
+        article: Article,
+        includeFeed: Boolean,
+        nowMs: Long = System.currentTimeMillis(),
+    ): List<String> = buildList {
+        age(article.publishedAtMs, nowMs).takeIf { it.isNotEmpty() }?.let(::add)
+        if (includeFeed) {
+            article.feedTitle.takeIf { it.isNotBlank() }?.let { add(ellipsize(it, MAX_TRAIL_CHARS)) }
+        }
+    }
+
+    /**
+     * Source token in the trail. Deliberately short: every character of trail is
+     * a character the headline loses on the same line.
+     */
+    const val MAX_TRAIL_CHARS = 8
+
     fun articleMeta(article: Article, includeFeed: Boolean, nowMs: Long = System.currentTimeMillis()): String {
         val parts = buildList {
             age(article.publishedAtMs, nowMs).takeIf { it.isNotEmpty() }?.let(::add)
@@ -34,13 +55,20 @@ object NewsFormat {
         NewsState.Status.Idle -> null
     }
 
-    /** Truncates on a word boundary when one is close enough, else hard-cuts. */
+    /**
+     * Truncates on a word boundary, but only when that boundary is near the cap.
+     * A HUD row is narrow: backing off to the previous word can throw away a
+     * third of the line, so past [WORD_BOUNDARY_SLACK] characters it hard-cuts
+     * instead.
+     */
     fun ellipsize(text: String, maxChars: Int): String {
         val trimmed = text.trim()
         if (trimmed.length <= maxChars) return trimmed
         val cut = trimmed.take(maxChars - 1)
         val lastSpace = cut.lastIndexOf(' ')
-        val body = if (lastSpace >= maxChars / 2) cut.take(lastSpace) else cut
+        val body = if (lastSpace >= cut.length - WORD_BOUNDARY_SLACK) cut.take(lastSpace) else cut
         return "$body…"
     }
+
+    const val WORD_BOUNDARY_SLACK = 8
 }

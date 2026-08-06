@@ -56,6 +56,18 @@ class NewsFormatTest {
     }
 
     @Test
+    fun `a distant word boundary is not worth a third of the line`() {
+        // "com 17 armas de diferentes calibres e municao" at 36 used to render as
+        // "com 17 armas de diferentes…" - 27 of 36 characters, a wasted third.
+        val text = "com 17 armas de diferentes calibres e municao apreendida"
+
+        val short = NewsFormat.ellipsize(text, 36)
+
+        assertTrue("wasted the line: '$short'", short.length >= 36 - NewsFormat.WORD_BOUNDARY_SLACK)
+        assertTrue(short.endsWith("…"))
+    }
+
+    @Test
     fun `text within the cap is returned untouched`() {
         assertEquals("Short", NewsFormat.ellipsize("  Short  ", 20))
     }

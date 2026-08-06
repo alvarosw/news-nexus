@@ -18,8 +18,8 @@ android {
         // fails there (plugins/AGENTS.md, docs/PLUGIN_SDK.md).
         minSdk = 30
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
     }
 
     compileOptions {

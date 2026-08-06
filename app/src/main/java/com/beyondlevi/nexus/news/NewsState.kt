@@ -41,6 +41,8 @@ class NewsState {
         val sub: String? = null,
         val id: String? = null,
         val dim: Boolean = false,
+        /** Small tokens the HUD draws to the right of the row title: age, source. */
+        val trail: List<String> = emptyList(),
     )
 
     var view: View = View.SOURCES
@@ -116,9 +118,13 @@ class NewsState {
         return articles.filter { it.feedId == scope }
     }
 
-    fun rows(): List<Row> = when (view) {
+    /**
+     * @param nowMs the clock the age tokens are rendered against. Injected rather
+     * than read inside, so a rendered row is reproducible in a test.
+     */
+    fun rows(nowMs: Long = System.currentTimeMillis()): List<Row> = when (view) {
         View.SOURCES -> sourceRows()
-        View.ARTICLES -> articleRows()
+        View.ARTICLES -> articleRows(nowMs)
         View.READER -> pageRows()
     }
 
@@ -161,7 +167,7 @@ class NewsState {
         }
     }
 
-    private fun articleRows(): List<Row> {
+    private fun articleRows(nowMs: Long = System.currentTimeMillis()): List<Row> {
         val scoped = scopedArticles()
         if (scoped.isEmpty()) {
             return listOf(
@@ -174,9 +180,9 @@ class NewsState {
                     Row(
                         kind = RowKind.ARTICLE,
                         text = article.title,
-                        sub = NewsFormat.articleMeta(article, scopeFeedId == null),
                         id = article.id,
                         dim = isRead(article.id),
+                        trail = NewsFormat.articleTrail(article, scopeFeedId == null, nowMs),
                     ),
                 )
             }

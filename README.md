@@ -32,8 +32,10 @@ Sources ──tap──▶ Headlines ──tap──▶ Reader
 
 - **Sources** — “All feeds”, one row per subscription with its article and unread
   counts (or the reason its last fetch failed), and a Refresh row.
-- **Headlines** — newest first, each row showing age, source and read state. Read
-  items are dimmed, not hidden.
+- **Headlines** — newest first. The headline is split across both text bands the
+  HUD draws for a list row (the renderer caps the title at one line and a plugin
+  cannot make it wrap), with age and source as trailing tokens. Read items are
+  dimmed, not hidden.
 - **Reader** — the article text paged for the HUD. Forward/back walks the pages, a
   tap also advances, Back returns to the headlines.
 
