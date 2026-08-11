@@ -3,6 +3,20 @@
 All notable changes to the News plugin are documented here. Versions follow
 semver and match `versionName` in `app/build.gradle.kts`.
 
+## 1.1.0
+
+- The article body is now a native reader surface (`NexusReader`, SDK
+  sdk-v0.14.0): the glasses renderer wraps the text and owns the scroll, so an
+  article ships whole instead of being cut into 4-row pages of 80 characters.
+  About 17 lines of continuous prose per screen instead of four clamped blocks.
+- The ring's forward/back scroll the document by viewport - the hub consumes
+  those keys for a reader surface and only forwards SELECT and BACK - and BACK
+  still returns to the headline list.
+- On a control-only link (SPP data plane down) the document is trimmed to a
+  CXR-safe size with a note saying so, because a surface over ~3 KiB is dropped
+  rather than delivered.
+- Requires glasses hub 1.4.1 or newer, which is where reader surfaces landed.
+
 ## 1.0.2
 
 - Headlines now read across both text bands of a HUD list row instead of being

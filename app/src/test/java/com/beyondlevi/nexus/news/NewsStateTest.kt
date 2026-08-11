@@ -113,7 +113,6 @@ class NewsStateTest {
         assertTrue(action is NewsState.Action.Opened)
         assertEquals("a2", (action as NewsState.Action.Opened).article.id)
         assertEquals(NewsState.View.READER, state.view)
-        assertEquals(0, state.page)
         assertTrue(state.isRead("a2"))
         assertFalse(state.isRead("a1"))
     }
@@ -129,27 +128,23 @@ class NewsStateTest {
     }
 
     @Test
-    fun `reader pages with NEXT, wraps, and advances on SELECT too`() {
+    fun `the reader takes no selection - the hub owns its scroll`() {
         val long = (1..40).joinToString(" ") { "word$it" }
         val state = NewsState().apply {
             setFeeds(listOf(feed(1)))
             setArticles(listOf(article(1).copy(summary = "$long\n$long\n$long")))
         }
         state.activate() // feed
-        state.activate() // article
-        val pageCount = state.pages.size
-        assertTrue("expected several pages, got $pageCount", pageCount > 1)
+        state.activate() // article -> reader
 
+        assertEquals(NewsState.View.READER, state.view)
+        // NEXT/PREV never reach a reader surface: the hub consumes them to scroll
+        // by viewport, so there is nothing here to move and nothing to tap.
+        assertEquals(0, state.selectableRowCount())
         state.move(1)
-        assertEquals(1, state.page)
-        state.activate()
-        assertEquals(2 % pageCount, state.page)
         state.move(-1)
-        assertEquals(1, state.page)
-
-        // A full lap wraps back to the first page.
-        repeat(pageCount - 1) { state.move(1) }
-        assertEquals(0, state.page)
+        assertEquals(NewsState.View.READER, state.view)
+        assertSame(NewsState.Action.None, state.activate())
     }
 
     @Test
@@ -169,7 +164,7 @@ class NewsStateTest {
     }
 
     @Test
-    fun `an article with no text still renders a reachable notice`() {
+    fun `an article with no text still opens - the reader says so itself`() {
         val state = NewsState().apply {
             setFeeds(listOf(feed(1)))
             setArticles(listOf(article(1).copy(summary = "")))
@@ -178,10 +173,6 @@ class NewsStateTest {
         state.activate()
 
         assertEquals(NewsState.View.READER, state.view)
-        assertEquals(NewsState.RowKind.NOTICE, state.rows().single().kind)
-        // No pages means no movement and no crash.
-        state.move(1)
-        assertEquals(0, state.page)
         assertEquals(NewsState.Back.POPPED, state.back())
     }
 

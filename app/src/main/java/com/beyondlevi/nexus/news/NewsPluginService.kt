@@ -3,6 +3,7 @@ package com.beyondlevi.nexus.news
 import android.view.KeyEvent
 import com.anezium.rokidbus.client.plugin.NexusCard
 import com.anezium.rokidbus.client.plugin.NexusPluginService
+import com.anezium.rokidbus.client.plugin.NexusReader
 import com.anezium.rokidbus.client.plugin.NexusSdkResult
 import com.anezium.rokidbus.client.plugin.NexusSurfaceSession
 import com.anezium.rokidbus.shared.plugin.NexusInputEvent
@@ -35,9 +36,17 @@ class NewsPluginService : NexusPluginService() {
                 override fun updateCard(card: NexusCard): NexusSdkResult =
                     session?.updateCard(card) ?: NexusSdkResult.NOT_REGISTERED
 
+                override fun showReader(reader: NexusReader): NexusSdkResult =
+                    session?.showReader(reader) ?: NexusSdkResult.NOT_REGISTERED
+
+                override fun updateReader(reader: NexusReader): NexusSdkResult =
+                    session?.updateReader(reader) ?: NexusSdkResult.NOT_REGISTERED
+
                 override fun hideSurface() {
                     session?.hide()
                 }
+
+                override fun dataPlaneUp(): Boolean = nexusClient?.supportsImageSurface == true
             },
         )
     }

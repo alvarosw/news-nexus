@@ -18,8 +18,8 @@ android {
         // fails there (plugins/AGENTS.md, docs/PLUGIN_SDK.md).
         minSdk = 30
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.1.0"
     }
 
     compileOptions {
@@ -40,7 +40,7 @@ android {
 
 dependencies {
     // Rokid Nexus plugin SDK (bus-client); `shared` resolves transitively.
-    implementation("com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.13.0")
+    implementation("com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.14.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     testImplementation("junit:junit:4.13.2")

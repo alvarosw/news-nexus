@@ -58,10 +58,6 @@ class NewsState {
         private set
     var selectedArticle: Int = 0
         private set
-    var page: Int = 0
-        private set
-    var pages: List<List<String>> = emptyList()
-        private set
     var openArticleId: String? = null
         private set
 
@@ -84,8 +80,6 @@ class NewsState {
         if (view == View.READER && currentOpenArticle() == null) {
             view = View.ARTICLES
             openArticleId = null
-            pages = emptyList()
-            page = 0
         }
     }
 
@@ -190,29 +184,28 @@ class NewsState {
         }
     }
 
-    private fun pageRows(): List<Row> {
-        val current = pages.getOrNull(page) ?: return listOf(
-            Row(
-                kind = RowKind.NOTICE,
-                text = "This item has no text in the feed",
-                sub = "Open the link on your phone to read it",
-                dim = true,
-            ),
-        )
-        return current.map { Row(kind = RowKind.PAGE, text = it) }
-    }
+    /**
+     * The reader is a native surface: the hub owns its layout and scroll, so the
+     * state machine has no rows there. Kept as a single informational row for
+     * the fallback paths that still ask for rows.
+     */
+    private fun pageRows(): List<Row> = listOf(
+        Row(kind = RowKind.PAGE, text = currentOpenArticle()?.title.orEmpty()),
+    )
 
     /** Rows a selection can land on. A notice row is shown but never focusable. */
     fun selectableRowCount(): Int = when (view) {
         View.SOURCES -> if (feeds.isEmpty()) 0 else sourceRows().size
         View.ARTICLES -> articleRows().size
-        View.READER -> maxOf(pages.size, 0)
+        // Nothing to select: NEXT/PREV never reach a reader surface, the hub
+        // consumes them to scroll.
+        View.READER -> 0
     }
 
     fun selectedIndex(): Int = when (view) {
         View.SOURCES -> selectedSource
         View.ARTICLES -> selectedArticle
-        View.READER -> page
+        View.READER -> 0
     }
 
     // ------------------------------------------------------------ one-axis input
@@ -225,19 +218,16 @@ class NewsState {
         when (view) {
             View.SOURCES -> selectedSource = next
             View.ARTICLES -> selectedArticle = next
-            View.READER -> page = next
+            // Unreachable: a reader surface has no selectable rows.
+            View.READER -> Unit
         }
     }
 
     /** SELECT acts on exactly the focused row. */
     fun activate(): Action {
-        // In the reader the selection is the page, not a row of the visible page:
-        // its single action is to advance, so a wearer who only taps still reads
-        // to the end.
-        if (view == View.READER) {
-            if (pages.isNotEmpty()) move(1)
-            return Action.None
-        }
+        // A reader surface forwards only SELECT and BACK; NEXT/PREV are the
+        // hub's scroll. There is nothing for a tap to act on.
+        if (view == View.READER) return Action.None
         val row = rows().getOrNull(selectedIndex()) ?: return Action.None
         return when (row.kind) {
             RowKind.NOTICE -> Action.None
@@ -269,8 +259,6 @@ class NewsState {
         View.READER -> {
             view = View.ARTICLES
             openArticleId = null
-            pages = emptyList()
-            page = 0
             Back.POPPED
         }
         View.ARTICLES -> {
@@ -285,8 +273,6 @@ class NewsState {
     fun openArticle(article: Article) {
         openArticleId = article.id
         markRead(article.id)
-        pages = ArticlePager.paginate(article.summary.split('\n').filter { it.isNotBlank() })
-        page = 0
         view = View.READER
     }
 
@@ -297,7 +283,6 @@ class NewsState {
     private fun clampSelection() {
         selectedSource = clamp(selectedSource, if (feeds.isEmpty()) 0 else sourceRows().size)
         selectedArticle = clamp(selectedArticle, articleRows().size)
-        page = clamp(page, pages.size)
     }
 
     private fun clamp(value: Int, count: Int): Int = when {
