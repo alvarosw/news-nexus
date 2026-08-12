@@ -135,6 +135,45 @@ class NewsSurfacesTest {
     }
 
     @Test
+    fun `a refreshed article is re-sent even though its identity is unchanged`() {
+        val state = NewsState().apply {
+            setFeeds(listOf(feed(1)))
+            setArticles(listOf(article(1).copy(summary = "First version of the body.")))
+        }
+        state.activate()
+        state.activate()
+        val before = NewsSurfaces.reader(state, now)!!
+
+        // Same article id - a feed edit, not a new item.
+        state.setArticles(listOf(article(1).copy(summary = "The newsroom rewrote this paragraph.")))
+        val after = NewsSurfaces.reader(state, now)!!
+
+        assertEquals(before.contentKey, after.contentKey)
+        assertNotEquals(
+            "an id-only key would suppress this update and strand the wearer on stale text",
+            NewsSurfaces.fingerprint(before),
+            NewsSurfaces.fingerprint(after),
+        )
+    }
+
+    @Test
+    fun `losing the data plane changes the fingerprint but not the identity`() {
+        val body = (1..400).joinToString(" ") { "word$it" }
+        val state = NewsState().apply {
+            setFeeds(listOf(feed(1)))
+            setArticles(listOf(article(1).copy(summary = body)))
+        }
+        state.activate()
+        state.activate()
+
+        val full = NewsSurfaces.reader(state, now, dataPlaneUp = true)!!
+        val degraded = NewsSurfaces.reader(state, now, dataPlaneUp = false)!!
+
+        assertEquals(full.contentKey, degraded.contentKey)
+        assertNotEquals(NewsSurfaces.fingerprint(full), NewsSurfaces.fingerprint(degraded))
+    }
+
+    @Test
     fun `a long list is windowed to a page that contains the focus`() {
         val state = state(feeds = 1, articles = 80)
         state.activate() // article list: 80 headlines + refresh

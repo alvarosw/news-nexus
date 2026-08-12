@@ -1,5 +1,7 @@
 package com.beyondlevi.nexus.news
 
+import com.anezium.rokidbus.client.plugin.NexusReader
+import com.anezium.rokidbus.client.plugin.NexusReaderSegment
 import com.anezium.rokidbus.client.plugin.NexusReaderSegmentKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -8,6 +10,10 @@ import org.junit.Test
 class ArticleReaderTest {
 
     private val now = 1_700_000_000_000L
+
+    /** What the segments actually cost on the wire, envelope included. */
+    private fun wireBytes(segments: List<NexusReaderSegment>): Int =
+        segments.sumOf { ArticleReader.utf8(it.text) + 40 } + 360
 
     private fun article(
         summary: String = "First paragraph.\nSecond paragraph.",
@@ -83,6 +89,7 @@ class ArticleReaderTest {
         val segments = ArticleReader.segments(article(summary = giant), now)
 
         assertTrue(segments.any { it.kind == NexusReaderSegmentKind.ASIDE && "did not fit" in it.text })
+        assertTrue(segments.sumOf { it.text.length } <= ArticleReader.MAX_TOTAL_CHARS)
     }
 
     @Test
@@ -93,10 +100,57 @@ class ArticleReaderTest {
         val full = ArticleReader.segments(article(summary = long), now, dataPlaneUp = true)
         val degraded = ArticleReader.segments(article(summary = long), now, dataPlaneUp = false)
 
-        val degradedChars = degraded.sumOf { it.text.length }
-        assertTrue("degraded document is $degradedChars chars", degradedChars <= ArticleReader.CXR_SAFE_CHARS + 64)
-        assertTrue(full.sumOf { it.text.length } > degradedChars)
+        assertTrue(wireBytes(degraded) <= ArticleReader.CXR_SAFE_BYTES)
+        assertTrue(wireBytes(full) > wireBytes(degraded))
         assertTrue(degraded.any { "needs the glasses data link" in it.text })
+    }
+
+    @Test
+    fun `the control-only budget is bytes, not characters`() {
+        // 2 000 CJK characters are ~6 KiB of UTF-8: a character budget would
+        // wave this through and the hub would drop the surface, leaving the
+        // wearer on the previous screen with no error anywhere.
+        val cjk = "这是一段很长的中文文章内容用来测试传输预算。".repeat(120)
+        assertTrue(cjk.length > 2_000)
+
+        val degraded = ArticleReader.segments(article(summary = cjk), now, dataPlaneUp = false)
+
+        assertTrue(
+            "document is ${wireBytes(degraded)} bytes",
+            wireBytes(degraded) <= ArticleReader.CXR_SAFE_BYTES,
+        )
+        // And it still says something rather than collapsing to nothing.
+        assertTrue(degraded.any { it.kind == NexusReaderSegmentKind.PROSE && it.text.isNotEmpty() })
+    }
+
+    @Test
+    fun `emoji text also respects the wire budget`() {
+        val emoji = "notícia com emoji 🚀🛰️🌎 e acentuação ".repeat(120)
+
+        val degraded = ArticleReader.segments(article(summary = emoji), now, dataPlaneUp = false)
+
+        assertTrue(wireBytes(degraded) <= ArticleReader.CXR_SAFE_BYTES)
+    }
+
+    @Test
+    fun `a document filled to the character limit still fits its closing note`() {
+        // The note used to be appended on top of an exhausted budget, which put
+        // the document over MAX_TOTAL_CHARS - and the SDK throws on that inside
+        // the plugin's own process, so opening the article killed the plugin.
+        val paragraph = "a".repeat(ArticleReader.MAX_SEGMENT_CHARS)
+        val overflowing = List(14) { paragraph }.joinToString("\n")
+        assertTrue(overflowing.length > ArticleReader.MAX_TOTAL_CHARS)
+
+        val segments = ArticleReader.segments(article(summary = overflowing), now)
+
+        assertTrue(
+            "document is ${segments.sumOf { it.text.length }} chars",
+            segments.sumOf { it.text.length } <= ArticleReader.MAX_TOTAL_CHARS,
+        )
+        assertTrue(segments.size <= ArticleReader.MAX_SEGMENTS)
+        assertTrue(segments.any { "did not fit" in it.text })
+        // The SDK model is the real judge: this must not throw.
+        NexusReader(title = "t", segments = segments)
     }
 
     @Test

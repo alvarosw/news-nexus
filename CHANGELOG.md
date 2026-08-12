@@ -3,10 +3,32 @@
 All notable changes to the News plugin are documented here. Versions follow
 semver and match `versionName` in `app/build.gradle.kts`.
 
+## 1.1.1
+
+Fixes from the Store's automated source review of 1.1.0. Two of them could take
+the plugin down or strand the reader, so they are worth stating plainly:
+
+- **The control-only document is budgeted in UTF-8 bytes, not characters.** The
+  ~3 KiB the control link carries is a byte limit; counting characters lied by a
+  factor of three on CJK or emoji text, so a Chinese article would have been
+  dropped by the hub and the wearer would have kept staring at the previous
+  screen. The envelope and per-segment overhead are counted too.
+- **The closing note is reserved before the prose is laid in.** It used to be
+  appended on top of an exhausted budget, which pushed the document past the
+  SDK's 40 000-character limit — and that limit throws inside the plugin's own
+  process, so opening a very long article could kill the plugin instead of
+  showing a truncated one.
+- **Surface sends dedupe on what was rendered, not on the article's identity.**
+  A feed that rewrites an open article keeps its id, so the old check suppressed
+  the update and left the wearer reading the stale text. The `contentKey` stays
+  stable, because the hub keys scroll position on it.
+- A partially-fitting paragraph now contributes its opening lines instead of
+  being dropped whole.
+
 ## 1.1.0
 
 - The article body is now a native reader surface (`NexusReader`, SDK
-  sdk-v0.14.0): the glasses renderer wraps the text and owns the scroll, so an
+  sdk-v0.15.0): the glasses renderer wraps the text and owns the scroll, so an
   article ships whole instead of being cut into 4-row pages of 80 characters.
   About 17 lines of continuous prose per screen instead of four clamped blocks.
 - The ring's forward/back scroll the document by viewport - the hub consumes

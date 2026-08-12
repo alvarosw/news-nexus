@@ -209,6 +209,44 @@ object NewsSurfaces {
      * the row window under the transport cliff. The SDK's own preflight only
      * rejects at 64 KiB, so this budget is the plugin's own responsibility.
      */
+    /**
+     * What was actually rendered, hashed. The `contentKey` is deliberately
+     * stable — it is the surface's identity, and the hub keys scroll position on
+     * it — so it cannot double as the "did anything change?" signal: a refresh
+     * that rewrites an open article keeps its id, and a data-plane change
+     * rewrites the document without touching it either. Dedupe on this instead.
+     */
+    fun fingerprint(reader: NexusReader): String = sha256Hex(
+        buildString {
+            append(reader.title).append('\u0000')
+            append(reader.subtitle.orEmpty()).append('\u0000')
+            append(reader.footer.orEmpty()).append('\u0000')
+            append(reader.anchor.name).append('\u0000')
+            append(reader.handlesBack).append('\u0000')
+            reader.segments.forEach { segment ->
+                append(segment.kind.name).append('\u0001')
+                append(segment.text).append('\u0001')
+                append(segment.emphasis).append('\u0000')
+            }
+        },
+    )
+
+    fun fingerprint(card: NexusCard): String = sha256Hex(
+        buildString {
+            append(card.title).append('\u0000')
+            append(card.subtitle.orEmpty()).append('\u0000')
+            append(card.footer.orEmpty()).append('\u0000')
+            card.lines.forEach { append(it).append('\u0001') }
+            card.richLines.orEmpty().forEach { row ->
+                append(row.text).append('\u0001')
+                append(row.sub.orEmpty()).append('\u0001')
+                append(row.trail.joinToString("\u0002")).append('\u0001')
+                append(row.tone.name).append('\u0001')
+                append(row.selected).append('\u0000')
+            }
+        },
+    )
+
     fun approximatePayloadBytes(card: NexusCard): Int {
         var bytes = 120 // envelope, surfaceId, kind, contentKey
         bytes += utf8(card.title)

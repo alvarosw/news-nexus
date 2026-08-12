@@ -46,7 +46,7 @@ class NewsRuntime(
     private var host: Host? = null
     private var scope: CoroutineScope? = null
     private var shown = false
-    private var lastSentContentKey: String? = null
+    private var lastSentFingerprint: String? = null
     private var refreshing = false
 
     // ------------------------------------------------------------------ session
@@ -55,7 +55,7 @@ class NewsRuntime(
         this.host = host
         // A fresh PLUGIN_OPEN is re-entrant: reset everything and re-show.
         shown = false
-        lastSentContentKey = null
+        lastSentFingerprint = null
         refreshing = false
         scope?.cancel()
         val sessionScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -78,7 +78,7 @@ class NewsRuntime(
         host?.hideSurface()
         host = null
         shown = false
-        lastSentContentKey = null
+        lastSentFingerprint = null
     }
 
     // -------------------------------------------------------------- one-axis input
@@ -234,8 +234,10 @@ class NewsRuntime(
             null
         }
         val card = if (reader == null) NewsSurfaces.card(state, clock()) else null
-        val key = reader?.contentKey ?: card?.contentKey
-        if (shown && key != null && key == lastSentContentKey) return
+        // Dedupe on what was rendered, not on the surface's identity: an open
+        // article whose text changed after a refresh keeps its contentKey.
+        val fingerprint = reader?.let(NewsSurfaces::fingerprint) ?: card?.let(NewsSurfaces::fingerprint)
+        if (shown && fingerprint != null && fingerprint == lastSentFingerprint) return
         val result = when {
             reader != null -> if (shown) target.updateReader(reader) else target.showReader(reader)
             card != null -> if (shown) target.updateCard(card) else target.showCard(card)
@@ -243,11 +245,11 @@ class NewsRuntime(
         }
         if (result == NexusSdkResult.SENT) {
             shown = true
-            lastSentContentKey = key
+            lastSentFingerprint = fingerprint
         } else {
             // Another plugin owns the HUD, or the grant/link is gone. Give up
             // quietly — never retry-loop a surface send.
-            lastSentContentKey = null
+            lastSentFingerprint = null
             Log.w(TAG, "Surface send returned $result")
         }
     }
