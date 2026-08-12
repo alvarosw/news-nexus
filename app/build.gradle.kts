@@ -40,7 +40,7 @@ android {
 
 dependencies {
     // Rokid Nexus plugin SDK (bus-client); `shared` resolves transitively.
-    implementation("com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.14.0")
+    implementation("com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.15.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     testImplementation("junit:junit:4.13.2")

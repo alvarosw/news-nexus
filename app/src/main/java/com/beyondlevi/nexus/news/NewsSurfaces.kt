@@ -3,6 +3,7 @@ package com.beyondlevi.nexus.news
 import com.anezium.rokidbus.client.plugin.NexusCard
 import com.anezium.rokidbus.client.plugin.NexusCardLine
 import com.anezium.rokidbus.client.plugin.NexusReader
+import com.anezium.rokidbus.client.plugin.NexusReaderAnchor
 import com.anezium.rokidbus.client.plugin.NexusRowTone
 import java.security.MessageDigest
 
@@ -57,7 +58,11 @@ object NewsSurfaces {
      * of being cut into viewport-sized pages here.
      *
      * `handlesBack` keeps BACK coming to the plugin, which pops back to the
-     * headline list instead of closing the plugin.
+     * headline list instead of closing the plugin, and the TOP anchor
+     * (sdk-v0.15.0, glasses hub 1.4.3) makes an article open on its first
+     * paragraph. The default BOTTOM is stream semantics — right for a chat,
+     * wrong for a document — and under TOP an update also stops tail-following,
+     * so a refresh leaves the wearer exactly where they had scrolled to.
      */
     fun reader(
         state: NewsState,
@@ -74,6 +79,7 @@ object NewsSurfaces {
             contentKey = "news-" + sha256Hex("READER|" + article.id).take(32),
             handlesBack = true,
             segments = ArticleReader.segments(article, nowMs, dataPlaneUp),
+            anchor = NexusReaderAnchor.TOP,
         )
     }
 

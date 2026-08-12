@@ -1,5 +1,6 @@
 package com.beyondlevi.nexus.news
 
+import com.anezium.rokidbus.client.plugin.NexusReaderAnchor
 import com.anezium.rokidbus.client.plugin.NexusRowTone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -122,6 +123,9 @@ class NewsSurfacesTest {
         val reader = NewsSurfaces.reader(state, now)!!
 
         assertTrue(reader.handlesBack)
+        // An article is document-shaped: it opens on its first paragraph and a
+        // refresh never yanks the wearer to the new end.
+        assertEquals(NexusReaderAnchor.TOP, reader.anchor)
         assertTrue(reader.segments.size >= 3)
         assertTrue(reader.contentKey!!.length <= 128)
         assertEquals("swipe to scroll · back to list", reader.footer)

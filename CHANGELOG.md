@@ -15,7 +15,11 @@ semver and match `versionName` in `app/build.gradle.kts`.
 - On a control-only link (SPP data plane down) the document is trimmed to a
   CXR-safe size with a note saying so, because a surface over ~3 KiB is dropped
   rather than delivered.
-- Requires glasses hub 1.4.1 or newer, which is where reader surfaces landed.
+- The reader opens on the article's first paragraph and never tail-follows: the
+  document-shaped `NexusReaderAnchor.TOP` (sdk-v0.15.0, glasses hub 1.4.3). A
+  refresh that grows the text leaves the wearer exactly where they were reading.
+- Requires glasses hub 1.4.3 or newer (versionCode 10403), which is where the
+  reader anchor landed; reader surfaces themselves arrived in 1.4.1.
 
 ## 1.0.2
 
