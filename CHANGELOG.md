@@ -3,6 +3,29 @@
 All notable changes to the News plugin are documented here. Versions follow
 semver and match `versionName` in `app/build.gradle.kts`.
 
+## 1.2.0
+
+- **A live tile for the glasses grid** (optional `widget_tile` capability, all
+  seven tile sizes `1x1` to `3x3`): the newest unread headlines, up to six, in up
+  to three sections, one per outlet with its unread count. Each item carries the
+  headline, the outlet, the opening of its summary and its age; the header reads
+  `N unread` (`N` on a one-column tile) and the rest count as "+N more".
+- The tile is refresh-driven and lives only inside the hub's tile lease: one
+  fetch of every feed when the lease starts and one per hub refresh, then idle.
+  News schedules no refresh of its own. A refresh within a minute of the last
+  fetch republishes from the cache, so what was read in the plugin leaves the
+  tile without a second fetch.
+- The tile's fetch refreshes the cache the plugin opens on; a fetch no feed
+  answered keeps showing the cached headlines and leaves the cache's age alone.
+- The phone's layout editor previews the tile with a sample until a real one is
+  published (`TILE_PREVIEW`).
+- Built against the live tiles SDK from the `alvarosw/Rokid-Nexus` fork
+  (`ed7ca9a1c4`) instead of `sdk-v0.15.0`; no other behavior changes. Because
+  `widget_tile` is optional, the APK still loads on a hub without tiles; on a hub
+  with them, the new capability asks for re-approval once.
+- Releases from the fork are signed with the fork's certificate
+  (`78a1be10…5f56d60`), so moving from an upstream build needs a reinstall.
+
 ## 1.1.1
 
 Fixes from the Store's automated source review of 1.1.0. Two of them could take

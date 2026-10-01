@@ -18,8 +18,8 @@ android {
         // fails there (plugins/AGENTS.md, docs/PLUGIN_SDK.md).
         minSdk = 30
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.1.1"
+        versionCode = 6
+        versionName = "1.2.0"
     }
 
     compileOptions {
@@ -39,8 +39,10 @@ android {
 }
 
 dependencies {
-    // Rokid Nexus plugin SDK (bus-client); `shared` resolves transitively.
-    implementation("com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.15.0")
+    // Rokid Nexus plugin SDK (bus-client); `shared` resolves transitively. Pinned
+    // to a commit of the alvarosw/Rokid-Nexus fork, the only SDK with the widget
+    // tile lease (onNexusTileActive/onNexusTileRefresh) and TileContent templates.
+    implementation("com.github.alvarosw.Rokid-Nexus:bus-client:ed7ca9a1c4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     testImplementation("junit:junit:4.13.2")

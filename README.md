@@ -14,8 +14,8 @@ typed surfaces this plugin declares.
 | Plugin id | `news` |
 | Package | `com.beyondlevi.nexus.news` |
 | API version | 3 |
-| Capabilities | `surfaces` (plus Android `INTERNET`, phone-side) |
-| SDK | `com.github.Anezium.Rokid-Nexus:bus-client:sdk-v0.13.0` |
+| Capabilities | `surfaces`; optional `widget_tile` (plus Android `INTERNET`, phone-side) |
+| SDK | `com.github.alvarosw.Rokid-Nexus:bus-client:ed7ca9a1c4` (the live tiles fork) |
 | minSdk / targetSdk | 30 / 36 |
 
 ## On the glasses
@@ -44,6 +44,30 @@ focused row carries the HUD's selection rail, and Back never dead-ends. The
 navigability is asserted on the JVM in
 [`NewsStateTest`](app/src/test/java/com/beyondlevi/nexus/news/NewsStateTest.kt).
 
+## On the grid
+
+With the optional `widget_tile` grant, News publishes a live tile for the
+glasses grid in every size from `1x1` to `3x3`. It is a list tile: the newest
+unread headlines, up to six, grouped into at most three sections, one per outlet,
+each carrying that outlet's unread count. An item is the headline, the outlet,
+the first lines of its summary and its age; the header reads `14 unread` (`14`
+on a one-column tile), and headlines that do not fit count as "+N more". With
+everything read, the newest headlines still show, at `0 unread`. The hub decides
+what each size shows of that; the phone's layout editor previews the tile with a
+sample until a real one is published.
+
+The tile is refresh-driven and runs only inside the hub's tile lease
+(`onNexusTileActive(true)` … `(false)`): News fetches every feed once when the
+lease starts and once per `onNexusTileRefresh()` — the hub sends those when the
+glasses home comes back into view, and at most every 15 minutes — publishes,
+and goes idle. It schedules no refresh of its own. A refresh within a minute of
+the last fetch, the open session's included, republishes from the cache instead,
+so articles read in the plugin leave the tile when you return to the home. The
+tile's fetch updates the same cache the plugin opens on, and a fetch that no
+feed answered keeps showing the cached headlines.
+
+On a hub without tiles the capability is ignored and News works as before.
+
 ## On the phone
 
 Nexus → Plugins → News opens the settings screen, built only from the Nexus
@@ -60,12 +84,15 @@ design kit:
 ## How it works
 
 ```
-NewsPluginService   adapter: lifecycle + the four ring keycodes, nothing else
+NewsPluginService   adapter: lifecycle, the four ring keycodes, the tile lease
+  ├─ NewsTileRuntime  tile lease: fetch once per hub refresh, publish, go idle
+  │    └─ NewsTile  feeds + read set ──▶ TileSnapshot (list template)
   └─ NewsRuntime    session: load, fetch, merge, render the single surface
        ├─ NewsState pure navigation/selection model (no Android, no SDK types)
        ├─ NewsSurfaces  state ──▶ NexusCard (rich rows, windowed and capped)
        ├─ RssParser  SAX parser for RSS 2.0 / Atom / RSS 1.0-RDF
        ├─ HtmlText + ArticlePager  markup ──▶ paragraphs ──▶ HUD pages
+       ├─ FeedFetcher  one feed fetch + merge, shared with the tile
        ├─ NewsHttpClient  bounded HttpURLConnection fetch
        └─ FeedStore  subscriptions, options, read set, article cache
 ```
@@ -75,7 +102,9 @@ degrade:
 
 - **Dormant unless open.** Nothing runs outside `PLUGIN_OPEN`…`PLUGIN_CLOSE`: no
   boot receiver, no background polling, no notifications of its own. The fetch
-  scope is cancelled on close.
+  scope is cancelled on close. The one exception is the hub's tile lease, and
+  inside it only the hub's refreshes trigger a fetch; the tile's scope is
+  cancelled when the lease ends.
 - **~3 KiB per surface.** A larger surface is silently not delivered when the SPP
   data plane is down, so rows are windowed to 12 per surface, strings are capped,
   and article text is paged. A test asserts the budget against 200 long articles.
@@ -110,7 +139,8 @@ certificate forever: a plugin's identity, and the wearer's grant, is
 
 ```bash
 adb install -r app-debug.apk
-# phone:   Nexus → Plugins → News → approve the surfaces capability (first time only)
+# phone:   Nexus → Plugins → News → approve its capabilities (surfaces, and widget_tile
+#          on a hub with tiles; first time, and again when the set changes)
 # glasses: launcher → News
 ```
 
@@ -138,6 +168,20 @@ apksigner verify --print-certs news-phone-release.apk   # Signer #1 certificate 
 
 It must match the `signerSha256` pinned in the registry descriptor; the phone
 hub checks the same value before it installs.
+
+### Fork releases
+
+Builds from [alvarosw/news-nexus](https://github.com/alvarosw/news-nexus), from
+`news-v1.2.0` on, are published by the `Release` workflow (on a `news-v*` tag)
+and signed with the fork's own certificate, not the one above. Its fingerprint is:
+
+```
+78a1be1045ba3b2614baa46e306a353a8a6bc3e5d07ba5d587490931d5f56d60
+```
+
+Because the signer is part of the plugin's identity, moving from an upstream
+build to a fork build (or back) needs an uninstall, a reinstall and
+re-approval.
 
 ## Roadmap
 

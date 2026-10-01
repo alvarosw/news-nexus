@@ -11,7 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // The Rokid Nexus bus-client SDK is published from sdk-v* tags via JitPack.
+        // The Rokid Nexus bus-client SDK is built by JitPack from a tag or commit.
         maven { url = uri("https://jitpack.io") }
     }
 }

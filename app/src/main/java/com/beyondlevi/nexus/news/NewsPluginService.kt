@@ -1,11 +1,13 @@
 package com.beyondlevi.nexus.news
 
+import android.util.Log
 import android.view.KeyEvent
 import com.anezium.rokidbus.client.plugin.NexusCard
 import com.anezium.rokidbus.client.plugin.NexusPluginService
 import com.anezium.rokidbus.client.plugin.NexusReader
 import com.anezium.rokidbus.client.plugin.NexusSdkResult
 import com.anezium.rokidbus.client.plugin.NexusSurfaceSession
+import com.anezium.rokidbus.client.plugin.WidgetTileSession
 import com.anezium.rokidbus.shared.plugin.NexusInputEvent
 
 /**
@@ -22,6 +24,20 @@ class NewsPluginService : NexusPluginService() {
 
     private var runtime: NewsRuntime? = null
     private var surface: NexusSurfaceSession? = null
+    private var tileSession: WidgetTileSession? = null
+    private val tileRuntime by lazy {
+        val store = FeedStore(applicationContext)
+        val fetcher = FeedFetcher { store.itemsPerFeed }
+        NewsTileRuntime(
+            store = store,
+            fetch = fetcher::fetch,
+            publish = { snapshot ->
+                val result = tileSession?.publish(snapshot)
+                // Unregistered or not granted: give up quietly, the next refresh republishes.
+                if (result != NexusSdkResult.SENT) Log.w(TAG, "Tile publish returned $result")
+            },
+        )
+    }
 
     override fun onNexusOpen() {
         val session = nexusSurfaceSession(NewsSurfaces.SURFACE_ID)
@@ -57,6 +73,30 @@ class NewsPluginService : NexusPluginService() {
         surface = null
     }
 
+    /**
+     * The hub's tile lease: grid mode is on, the glasses are linked, the tile is
+     * placed and `widget_tile` is granted. Nothing tile-related runs outside it.
+     */
+    override fun onNexusTileActive(active: Boolean) {
+        if (active) {
+            tileSession = nexusWidgetTileSession(TILE_ID)
+            tileRuntime.start()
+        } else {
+            tileRuntime.stop()
+            tileSession = null
+        }
+    }
+
+    override fun onNexusTileRefresh() {
+        tileRuntime.refresh()
+    }
+
+    override fun onDestroy() {
+        tileRuntime.stop()
+        tileSession = null
+        super.onDestroy()
+    }
+
     override fun onNexusInput(event: NexusInputEvent) {
         if (event.action != KeyEvent.ACTION_DOWN) return
         val active = runtime ?: return
@@ -77,5 +117,10 @@ class NewsPluginService : NexusPluginService() {
 
             else -> return
         }
+    }
+
+    private companion object {
+        const val TAG = "NewsPlugin"
+        const val TILE_ID = "main"
     }
 }

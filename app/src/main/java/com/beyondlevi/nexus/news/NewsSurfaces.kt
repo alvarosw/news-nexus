@@ -262,7 +262,7 @@ object NewsSurfaces {
 
     private fun utf8(text: String): Int = text.toByteArray(Charsets.UTF_8).size
 
-    private fun sha256Hex(value: String): String {
+    internal fun sha256Hex(value: String): String {
         val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
         return buildString(digest.size * 2) { digest.forEach { append("%02x".format(it)) } }
     }
