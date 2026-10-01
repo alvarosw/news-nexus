@@ -97,9 +97,15 @@ jobs:
             exit 1
           fi
 
-          apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          # Pinned: the newest build-tools on the runner may need a newer JDK than the
+          # 17 set up above, and then apksigner prints an error instead of the certs.
+          apksigner="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          if [[ ! -x "$apksigner" ]]; then
+            echo "::error::apksigner not found at '$apksigner'."
+            exit 1
+          fi
           certs="$("$apksigner" verify --print-certs "${apks[0]}" 2>&1)" || true
-          signer="$(printf '%s\n' "$certs" | grep -i 'Signer #1 certificate SHA-256' | grep -oiE '[0-9a-f]{64}' | head -1 | tr 'A-F' 'a-f')"
+          signer="$(printf '%s\n' "$certs" | grep -i 'Signer #1 certificate SHA-256' | grep -oiE '[0-9a-f]{64}' | head -1 | tr 'A-F' 'a-f' || true)"
           if [[ "$signer" != "$EXPECTED_SIGNER_SHA256" ]]; then
             echo "::warning::apksigner at '$apksigner' on '${apks[0]}' printed: $(printf '%s' "$certs" | tr '\n' ' ' | cut -c1-600)"
             echo "::error::Release APK is signed by '$signer', expected '$EXPECTED_SIGNER_SHA256'."
