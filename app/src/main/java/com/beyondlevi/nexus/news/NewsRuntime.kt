@@ -25,6 +25,8 @@ class NewsRuntime(
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
 
+    private val fetcher = FeedFetcher(http) { store.itemsPerFeed }
+
     /** The surface the hub gave the service, seen from the runtime. */
     interface Host {
         fun showCard(card: NexusCard): NexusSdkResult
@@ -143,29 +145,16 @@ class NewsRuntime(
     }
 
     private suspend fun fetchOne(feed: Feed): FeedFetch = withContext(Dispatchers.IO) {
-        try {
-            val bytes = http.fetch(feed.url)
-            val parsed = RssParser.parse(feed.id, bytes.inputStream())
-            FeedFetch.Success(
-                feedId = feed.id,
-                channelTitle = parsed.channelTitle,
-                articles = parsed.articles.take(store.itemsPerFeed),
-            )
-        } catch (error: Exception) {
-            Log.w(TAG, "Feed fetch failed for ${feed.url}", error)
-            FeedFetch.Failure(feed.id, humanReason(error))
-        }
+        fetcher.fetch(feed)
     }
 
     private fun applyFetches(fetches: List<FeedFetch>) {
         var failures = 0
-        val fetched = mutableListOf<Article>()
         fetches.forEach { fetch ->
             when (fetch) {
                 is FeedFetch.Success -> {
                     state.setFailure(fetch.feedId, null)
                     store.renameFeed(fetch.feedId, fetch.channelTitle)
-                    fetched += fetch.articles
                 }
                 is FeedFetch.Failure -> {
                     failures++
@@ -173,14 +162,7 @@ class NewsRuntime(
                 }
             }
         }
-        // A feed that failed keeps whatever it had cached, so one broken feed never
-        // empties the HUD.
-        val keptFromCache = state.articles.filter { article ->
-            fetches.any { it is FeedFetch.Failure && it.feedId == article.feedId }
-        }
-        val merged = (fetched + keptFromCache)
-            .distinctBy { it.id }
-            .sortedWith(compareByDescending<Article> { it.publishedAtMs ?: Long.MIN_VALUE })
+        val merged = FeedFetcher.merge(fetches, state.articles)
 
         state.setFeeds(store.feeds())
         state.setArticles(withFeedTitles(merged))
@@ -198,14 +180,6 @@ class NewsRuntime(
         return if (reasons.size == 1) reasons.first() else "No feed could be fetched"
     }
 
-    private fun humanReason(error: Exception): String = when (error) {
-        is NewsHttpClient.HttpFailure -> error.message ?: "Fetch failed"
-        is RssParser.ParseException -> "Not a valid feed"
-        is java.net.UnknownHostException -> "No network"
-        is java.net.SocketTimeoutException -> "Timed out"
-        else -> error.javaClass.simpleName
-    }
-
     private fun isStale(fetchedAtMs: Long): Boolean {
         if (fetchedAtMs <= 0L) return true
         val minutes = store.refreshMinutes
@@ -213,14 +187,8 @@ class NewsRuntime(
         return clock() - fetchedAtMs > minutes * 60_000L
     }
 
-    /** The feed title lives in the subscription, not in the cached entry. */
-    private fun withFeedTitles(articles: List<Article>): List<Article> {
-        val titles = state.feeds.associate { it.id to it.displayTitle }
-        return articles.map { article ->
-            val title = titles[article.feedId] ?: article.feedTitle
-            if (article.feedTitle == title) article else article.copy(feedTitle = title)
-        }
-    }
+    private fun withFeedTitles(articles: List<Article>): List<Article> =
+        FeedFetcher.withFeedTitles(articles, state.feeds)
 
     // ----------------------------------------------------------------- rendering
 
