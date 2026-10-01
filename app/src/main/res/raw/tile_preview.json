@@ -1,0 +1,64 @@
+{
+  "contentKey": "preview",
+  "template": "list",
+  "content": {
+    "sections": [
+      {
+        "title": "Civic Wire",
+        "detail": "5",
+        "items": [
+          {
+            "title": "Regional rail strike called off after late-night deal",
+            "detail": "Civic Wire",
+            "paragraph": "Unions and the operator agreed on a two-year pay settlement just before midnight; trains run normally from the first service.",
+            "ageMs": 240000,
+            "leading": null
+          }
+        ]
+      },
+      {
+        "title": "Harbor Ledger",
+        "detail": "6",
+        "items": [
+          {
+            "title": "Night bus routes extended through the winter",
+            "detail": "Harbor Ledger",
+            "paragraph": "Three late routes keep running until March, with a new stop by the ferry terminal.",
+            "ageMs": 720000,
+            "leading": null
+          }
+        ]
+      },
+      {
+        "title": "Field Notes",
+        "detail": "3",
+        "items": [
+          {
+            "title": "Library adds a Saturday repair café",
+            "detail": "Field Notes",
+            "paragraph": "Volunteers fix lamps, bikes and clothes for free every Saturday morning.",
+            "ageMs": 1860000,
+            "leading": null
+          }
+        ]
+      }
+    ],
+    "summary": "14 unread",
+    "summaryShort": "14",
+    "footer": "",
+    "paragraphLines": 2,
+    "overflow": 11
+  },
+  "title": "14 unread",
+  "subtitle": "",
+  "badge": "14",
+  "progress": null,
+  "unit": "",
+  "tone": "info",
+  "staleAfterMs": 2400000,
+  "rows": [
+    "Regional rail strike called off after late-night deal - Unions and the operator agreed on a two-year pay settlement just",
+    "Night bus routes extended through the winter - Three late routes keep running until March, with a new stop by the ferry ",
+    "Library adds a Saturday repair café - Volunteers fix lamps, bikes and clothes for free every Saturday morning."
+  ]
+}

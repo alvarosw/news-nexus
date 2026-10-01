@@ -55,6 +55,12 @@
             <meta-data android:name="com.anezium.rokidbus.plugin.ICON_DRAWABLE" android:resource="@drawable/nexus_glyph_news" />
             <meta-data android:name="com.anezium.rokidbus.plugin.API_VERSION" android:value="3" />
             <meta-data android:name="com.anezium.rokidbus.plugin.CAPABILITIES" android:value="surfaces" />
+            <!-- Optional, so the same APK still loads on a hub without tiles; a hub
+                 that knows the key asks the wearer to approve it like any other. -->
+            <meta-data android:name="com.anezium.rokidbus.plugin.OPTIONAL_CAPABILITIES" android:value="widget_tile" />
+            <meta-data android:name="com.anezium.rokidbus.plugin.TILE_SIZES" android:value="1x1,2x1,3x1,1x2,2x2,3x2,3x3" />
+            <!-- The layout editor's size preview shows this until a real tile is published. -->
+            <meta-data android:name="com.anezium.rokidbus.plugin.TILE_PREVIEW" android:resource="@raw/tile_preview" />
             <meta-data android:name="com.anezium.rokidbus.plugin.RECEIVE_PREFIXES" android:value="/plugin/news,/system/plugin" />
             <meta-data android:name="com.anezium.rokidbus.plugin.SETTINGS_ACTIVITY" android:value=".NewsSettingsActivity" />
             <meta-data android:name="com.anezium.rokidbus.plugin.LAUNCHABLE" android:value="true" />

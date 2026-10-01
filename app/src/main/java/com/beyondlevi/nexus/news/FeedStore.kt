@@ -11,7 +11,7 @@ import java.io.File
  * Subscriptions and options live in SharedPreferences; the cached articles live in
  * a file, because prefs are loaded whole into memory and article text is large.
  */
-class FeedStore(private val context: Context) {
+class FeedStore(private val context: Context) : NewsTileRuntime.Store {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -21,7 +21,7 @@ class FeedStore(private val context: Context) {
 
     // ----------------------------------------------------------- subscriptions
 
-    fun feeds(): List<Feed> = FeedCodec.decodeFeeds(prefs.getString(KEY_FEEDS, null))
+    override fun feeds(): List<Feed> = FeedCodec.decodeFeeds(prefs.getString(KEY_FEEDS, null))
 
     fun addFeed(rawUrl: String): AddResult {
         val url = FeedCodec.normalizeFeedUrl(rawUrl) ?: return AddResult.Invalid
@@ -41,7 +41,7 @@ class FeedStore(private val context: Context) {
     }
 
     /** Names a feed from the channel title the first successful fetch reported. */
-    fun renameFeed(feedId: String, title: String) {
+    override fun renameFeed(feedId: String, title: String) {
         val cleaned = title.trim().take(MAX_TITLE_CHARS)
         if (cleaned.isEmpty()) return
         val updated = feeds().map { feed ->
@@ -73,7 +73,7 @@ class FeedStore(private val context: Context) {
 
     // --------------------------------------------------------------- read state
 
-    fun readIds(): List<String> = FeedCodec.decodeIds(prefs.getString(KEY_READ, null))
+    override fun readIds(): List<String> = FeedCodec.decodeIds(prefs.getString(KEY_READ, null))
 
     fun writeReadIds(ids: Collection<String>) {
         // Bounded: the read set only has to cover what a feed can still show.
@@ -83,12 +83,12 @@ class FeedStore(private val context: Context) {
 
     // -------------------------------------------------------------------- cache
 
-    fun cachedArticles(): FeedCodec.CachedArticles {
+    override fun cachedArticles(): FeedCodec.CachedArticles {
         val raw = runCatching { cacheFile.takeIf(File::isFile)?.readText() }.getOrNull()
         return FeedCodec.decodeArticles(raw)
     }
 
-    fun writeCache(articles: List<Article>, fetchedAtMs: Long) {
+    override fun writeCache(articles: List<Article>, fetchedAtMs: Long) {
         runCatching { cacheFile.writeText(FeedCodec.encodeArticles(articles, fetchedAtMs)) }
     }
 
