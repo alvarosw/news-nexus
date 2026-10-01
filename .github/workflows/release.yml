@@ -98,9 +98,10 @@ jobs:
           fi
 
           apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
-          signer="$("$apksigner" verify --print-certs "${apks[0]}" \
-            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')"
+          certs="$("$apksigner" verify --print-certs "${apks[0]}" 2>&1)" || true
+          signer="$(printf '%s\n' "$certs" | grep -i 'Signer #1 certificate SHA-256' | grep -oiE '[0-9a-f]{64}' | head -1 | tr 'A-F' 'a-f')"
           if [[ "$signer" != "$EXPECTED_SIGNER_SHA256" ]]; then
+            echo "::warning::apksigner at '$apksigner' on '${apks[0]}' printed: $(printf '%s' "$certs" | tr '\n' ' ' | cut -c1-600)"
             echo "::error::Release APK is signed by '$signer', expected '$EXPECTED_SIGNER_SHA256'."
             exit 1
           fi
