@@ -1,0 +1,155 @@
+name: Release
+
+# Publishes news-phone-release.apk for a news-v<semver> tag, signed with the
+# plugin's release key from the repository secrets. Modeled on Rokid Nexus'
+# plugin-release workflow.
+
+on:
+  push:
+    tags: ["news-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # The fork's release certificate. A plugin's identity includes its signer,
+      # so a release signed by anything else must never be published.
+      EXPECTED_SIGNER_SHA256: 78a1be1045ba3b2614baa46e306a353a8a6bc3e5d07ba5d587490931d5f56d60
+    steps:
+      - name: Check out the tagged revision
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Validate the tag against versionName
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="$GITHUB_REF_NAME"
+          version="${tag#news-v}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Release tag must have the form news-v<semver>; got '$tag'."
+            exit 1
+          fi
+
+          mapfile -t version_names < <(
+            sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' app/build.gradle.kts
+          )
+          if [[ "${#version_names[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one literal versionName in app/build.gradle.kts; found ${#version_names[@]}."
+            exit 1
+          fi
+          if [[ "${version_names[0]}" != "$version" ]]; then
+            echo "::error::versionName is '${version_names[0]}', but tag '$tag' requests '$version'."
+            exit 1
+          fi
+
+          echo "PLUGIN_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
+
+      - name: Decode release keystore outside the checkout
+        shell: bash
+        env:
+          NEXUS_RELEASE_KEYSTORE_B64: ${{ secrets.NEXUS_RELEASE_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$NEXUS_RELEASE_KEYSTORE_B64" ]]; then
+            echo "::error::NEXUS_RELEASE_KEYSTORE_B64 is not configured."
+            exit 1
+          fi
+
+          keystore_path="$RUNNER_TEMP/nexus-release.keystore"
+          umask 077
+          printf '%s' "$NEXUS_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore_path"
+          echo "NEXUS_RELEASE_KEYSTORE=$keystore_path" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        shell: bash
+        env:
+          NEXUS_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_RELEASE_KEYSTORE_PASSWORD }}
+          NEXUS_RELEASE_KEY_ALIAS: ${{ secrets.NEXUS_RELEASE_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          ./gradlew :app:assembleRelease --no-daemon
+
+      - name: Verify the signer and prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk_dir="app/build/outputs/apk/release"
+          mapfile -t apks < <(find "$apk_dir" -maxdepth 1 -type f -name '*.apk' -print)
+          if [[ "${#apks[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one release APK in '$apk_dir'; found ${#apks[@]}."
+            exit 1
+          fi
+
+          apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          signer="$("$apksigner" verify --print-certs "${apks[0]}" \
+            | sed -nE 's/^Signer #1 certificate SHA-256 digest: ([0-9a-f]+)$/\1/p')"
+          if [[ "$signer" != "$EXPECTED_SIGNER_SHA256" ]]; then
+            echo "::error::Release APK is signed by '$signer', expected '$EXPECTED_SIGNER_SHA256'."
+            exit 1
+          fi
+
+          artifact_name="news-phone-release.apk"
+          artifact_path="$RUNNER_TEMP/$artifact_name"
+          cp "${apks[0]}" "$artifact_path"
+          sha256="$(sha256sum "$artifact_path" | cut -d ' ' -f 1)"
+
+          notes_path="$RUNNER_TEMP/news-release-notes.md"
+          if ! awk -v version="$PLUGIN_VERSION" '
+            $1 == "##" {
+              if (found) exit
+              if ($2 == version) {
+                found = 1
+                next
+              }
+            }
+            found { print }
+            END { if (!found) exit 42 }
+          ' CHANGELOG.md > "$notes_path"; then
+            echo "::error::CHANGELOG.md has no '## $PLUGIN_VERSION' section."
+            exit 1
+          fi
+          if ! grep -q '[^[:space:]]' "$notes_path"; then
+            echo "::error::CHANGELOG section '## $PLUGIN_VERSION' is empty."
+            exit 1
+          fi
+
+          printf '\n### Artifact\n\n- File: `%s`\n- SHA-256: `%s`\n- Signer SHA-256: `%s`\n' \
+            "$artifact_name" "$sha256" "$signer" >> "$notes_path"
+
+          {
+            echo "ARTIFACT_PATH=$artifact_path"
+            echo "RELEASE_NOTES_PATH=$notes_path"
+          } >> "$GITHUB_ENV"
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" "$ARTIFACT_PATH" \
+            --title "News $PLUGIN_VERSION" \
+            --notes-file "$RELEASE_NOTES_PATH" \
+            --verify-tag
+
+      - name: Remove decoded keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/nexus-release.keystore"
